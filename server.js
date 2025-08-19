@@ -1,5 +1,5 @@
 const express = require("express");
-const puppeteer = require("puppeteer");
+const puppeteer = require("puppeteer-core"); // lightweight, uses system Chromium
 const fs = require("fs");
 const path = require("path");
 const { v4: uuidv4 } = require("uuid");
@@ -7,7 +7,7 @@ const { v4: uuidv4 } = require("uuid");
 const app = express();
 const PORT = process.env.PORT || 8000;
 
-// Use /tmp for temporary screenshots (Render ephemeral storage)
+// Use /tmp for temporary screenshots (ephemeral storage on Render)
 const OUTPUT_DIR = "/tmp/screenshots";
 if (!fs.existsSync(OUTPUT_DIR)) fs.mkdirSync(OUTPUT_DIR, { recursive: true });
 
@@ -16,16 +16,21 @@ let browser;
 
 // Launch Puppeteer browser at startup
 (async () => {
-  browser = await puppeteer.launch({
-    executablePath: "/usr/bin/chromium", // system Chromium on Render
-    headless: true,
-    args: [
-      "--no-sandbox",
-      "--disable-setuid-sandbox",
-      "--disable-dev-shm-usage",
-      "--disable-gpu",
-    ],
-  });
+  try {
+    browser = await puppeteer.launch({
+      executablePath: "/usr/bin/chromium", // system Chromium on Render
+      headless: true,
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-gpu",
+      ],
+    });
+    console.log("Browser launched successfully");
+  } catch (err) {
+    console.error("Failed to launch browser:", err);
+  }
 })();
 
 // Home route
