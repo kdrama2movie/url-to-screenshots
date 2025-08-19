@@ -1,14 +1,14 @@
 {
   "name": "my-screenshot-api",
   "version": "1.0.0",
-  "description": "Lightweight screenshot API using Puppeteer",
+  "description": "Lightweight screenshot API using Puppeteer-core",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
     "express": "^4.18.2",
-    "puppeteer": "^21.3.8",
+    "puppeteer-core": "^21.3.8",
     "uuid": "^9.0.0"
   }
 }
