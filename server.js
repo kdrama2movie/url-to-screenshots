@@ -1,75 +1,34 @@
-const express = require("express");
-const puppeteer = require("puppeteer-core"); // lightweight, uses system Chromium
-const fs = require("fs");
-const path = require("path");
-const { v4: uuidv4 } = require("uuid");
+import express from "express";
+import puppeteer from "puppeteer-core";
+import { v4 as uuidv4 } from "uuid";
 
 const app = express();
-const PORT = process.env.PORT || 8000;
 
-// Use /tmp for temporary screenshots (ephemeral storage on Render)
-const OUTPUT_DIR = "/tmp/screenshots";
-if (!fs.existsSync(OUTPUT_DIR)) fs.mkdirSync(OUTPUT_DIR, { recursive: true });
-
-// Global browser instance
-let browser;
-
-// Launch Puppeteer browser at startup
-(async () => {
-  try {
-    browser = await puppeteer.launch({
-      executablePath: "/usr/bin/chromium", // system Chromium on Render
-      headless: true,
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--disable-gpu",
-      ],
-    });
-    console.log("Browser launched successfully");
-  } catch (err) {
-    console.error("Failed to launch browser:", err);
-  }
-})();
-
-// Home route
-app.get("/", (req, res) => {
-  res.json({ message: "Screenshot API is running" });
-});
-
-// Screenshot route
 app.get("/screenshot", async (req, res) => {
-  const url = req.query.url;
-  const fullPage = req.query.full_page === "true";
-
-  if (!url) return res.status(400).json({ error: "URL is required" });
-
-  const filename = `${uuidv4()}.png`;
-  const filepath = path.join(OUTPUT_DIR, filename);
+  const { url, full_page } = req.query;
+  if (!url) return res.status(400).json({ error: "Missing ?url parameter" });
 
   try {
+    const browser = await puppeteer.launch({
+      executablePath: "/usr/bin/chromium",
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      headless: true,
+    });
+
     const page = await browser.newPage();
     await page.setViewport({ width: 1280, height: 800 });
     await page.goto(url, { waitUntil: "networkidle2", timeout: 60000 });
-    await page.screenshot({ path: filepath, fullPage });
-    await page.close();
 
-    // Send file and delete after sending
-    res.sendFile(filepath, (err) => {
-      if (!err) fs.unlink(filepath, () => {});
-    });
+    const screenshot = await page.screenshot({ fullPage: full_page === "true" });
+    await browser.close();
+
+    res.set("Content-Type", "image/png");
+    res.send(screenshot);
   } catch (err) {
-    console.error(err);
+    console.error("Screenshot error:", err);
     res.status(500).json({ error: "Failed to take screenshot" });
   }
 });
 
-// Gracefully close browser on exit
-process.on("exit", async () => {
-  if (browser) await browser.close();
-});
-
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+const PORT = process.env.PORT || 8000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
